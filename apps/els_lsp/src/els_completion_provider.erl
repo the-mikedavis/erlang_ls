@@ -80,15 +80,37 @@ resolve(#{ <<"kind">> := ?COMPLETION_ITEM_KIND_FUNCTION
                                    , binary_to_atom(Function, utf8)
                                    , Arity),
   CompletionItem#{documentation => els_markup_content:new(Entries)};
+resolve(#{ kind := ?COMPLETION_ITEM_KIND_FUNCTION
+         , data := #{ <<"module">> := Module
+                    , <<"function">> := Function
+                    , <<"arity">> := Arity
+                    }
+         } = CompletionItem) ->
+  Entries = els_docs:function_docs ( 'remote'
+                                   , Module
+                                   , Function
+                                   , Arity),
+  CompletionItem#{documentation => els_markup_content:new(Entries)};
 resolve(#{ <<"kind">> := ?COMPLETION_ITEM_KIND_TYPE_PARAM
          , <<"data">> := #{ <<"module">> := Module
                           , <<"type">> := Type
                           , <<"arity">> := Arity
-                        }
+                          }
          } = CompletionItem) ->
   Entries = els_docs:type_docs('remote'
           , binary_to_atom(Module, utf8)
           , binary_to_atom(Type, utf8)
+          , Arity),
+  CompletionItem#{ documentation => els_markup_content:new(Entries) };
+resolve(#{ kind := ?COMPLETION_ITEM_KIND_TYPE_PARAM
+         , data := #{ <<"module">> := Module
+                    , <<"type">> := Type
+                    , <<"arity">> := Arity
+                    }
+         } = CompletionItem) ->
+  Entries = els_docs:type_docs('remote'
+          , Module
+          , Type
           , Arity),
   CompletionItem#{ documentation => els_markup_content:new(Entries) };
 resolve(CompletionItem) ->
@@ -683,26 +705,26 @@ completion_item(#{kind := Kind, id := {F, A}, data := POIData}, Data, false)
       true -> ?INSERT_TEXT_FORMAT_SNIPPET;
       false -> ?INSERT_TEXT_FORMAT_PLAIN_TEXT
     end,
-  #{ label            => els_utils:to_binary(Label)
+  resolve(#{ label    => els_utils:to_binary(Label)
    , kind             => completion_item_kind(Kind)
    , insertText       => format_function(F, ArgsNames, SnippetSupport)
    , insertTextFormat => Format
    , data             => Data
-   };
+   });
 completion_item(#{kind := Kind, id := {F, A}}, Data, true)
   when Kind =:= function;
        Kind =:= type_definition ->
   Label = io_lib:format("~p/~p", [F, A]),
-  #{ label            => els_utils:to_binary(Label)
+  resolve(#{ label    => els_utils:to_binary(Label)
    , kind             => completion_item_kind(Kind)
    , insertTextFormat => ?INSERT_TEXT_FORMAT_PLAIN_TEXT
    , data             => Data
-   };
+   });
 completion_item(#{kind := Kind = record, id := Name}, Data, _) ->
-  #{ label            => atom_to_label(Name)
+  resolve(#{ label    => atom_to_label(Name)
    , kind             => completion_item_kind(Kind)
    , data             => Data
-   };
+   });
 completion_item(#{kind := Kind = define, id := Name, data := Info}, Data, _) ->
   #{args := ArgNames} = Info,
   SnippetSupport = snippet_support(),
@@ -711,12 +733,12 @@ completion_item(#{kind := Kind = define, id := Name, data := Info}, Data, _) ->
       true -> ?INSERT_TEXT_FORMAT_SNIPPET;
       false -> ?INSERT_TEXT_FORMAT_PLAIN_TEXT
     end,
-  #{ label            => macro_label(Name)
+  resolve(#{ label            => macro_label(Name)
    , kind             => completion_item_kind(Kind)
    , insertText       => format_macro(Name, ArgNames, SnippetSupport)
    , insertTextFormat => Format
    , data             => Data
-   }.
+   }).
 
 -spec macro_label(atom() | {atom(), non_neg_integer()}) -> binary().
 macro_label({Name, Arity}) ->
