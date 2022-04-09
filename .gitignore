@@ -29,3 +29,6 @@ doc
 # Emacs temporary files
 .#*
 *#
+
+# Nix
+/result
