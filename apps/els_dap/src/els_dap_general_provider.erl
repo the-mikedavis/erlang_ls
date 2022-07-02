@@ -507,7 +507,7 @@ handle_request({<<"disconnect">>, _Params}, State) ->
 evaluate_condition(Breakpt, Module, Line, ProjectNode, ThreadPid) ->
     %% evaluate condition if exists, otherwise treat as 'true'
     case Breakpt of
-        #{condition := CondExpr} ->
+        #{condition := CondExpr} when CondExpr =/= null ->
             CondEval = safe_eval(ProjectNode, ThreadPid, CondExpr, no_update),
             case CondEval of
                 true ->
@@ -545,7 +545,7 @@ evaluate_condition(Breakpt, Module, Line, ProjectNode, ThreadPid) ->
 evaluate_hitcond(Breakpt, HitCount, Module, Line, ProjectNode, ThreadPid) ->
     %% evaluate condition if exists, otherwise treat as 'true'
     case Breakpt of
-        #{hitcond := HitExpr} ->
+        #{hitcond := HitExpr} when HitExpr =/= null ->
             HitEval = safe_eval(ProjectNode, ThreadPid, HitExpr, no_update),
             case HitEval of
                 N when is_integer(N), N > 0 -> (HitCount rem N =:= 0);
@@ -579,7 +579,7 @@ evaluate_hitcond(Breakpt, HitCount, Module, Line, ProjectNode, ThreadPid) ->
 ) -> boolean().
 check_stop(Breakpt, IsHit, Module, Line, ProjectNode, ThreadPid) ->
     case Breakpt of
-        #{logexpr := LogExpr} ->
+        #{logexpr := LogExpr} when LogExpr =/= null ->
             case IsHit of
                 true ->
                     Return = safe_eval(ProjectNode, ThreadPid, LogExpr, no_update),
