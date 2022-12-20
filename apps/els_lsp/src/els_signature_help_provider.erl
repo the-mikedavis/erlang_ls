@@ -34,7 +34,7 @@ handle_request({signature_help, Params}) ->
     {ok, #{text := Text} = Document} = els_utils:lookup_document(Uri),
     Prefix = els_text:line(Text, Line, Character),
     Tokens = lists:reverse(els_text:tokens(Prefix)),
-    case find_signature(Tokens, Text, Line - 1) of
+    case find_signature(Tokens) of
         {ok, Item, ActiveParameter} ->
             {response, signatures(Document, Item, ActiveParameter)};
         none ->
@@ -44,24 +44,18 @@ handle_request({signature_help, Params}) ->
 %%==============================================================================
 %% Internal functions
 %%==============================================================================
--spec find_signature(
-    Tokens :: [tuple()],
-    Text :: binary(),
-    Line :: non_neg_integer()
-) ->
+-spec find_signature(Tokens :: [tuple()]) ->
     {ok, item(), parameter_number()} | none.
-find_signature(Tokens, Text, Line) ->
-    find_signature(Tokens, [0], Text, Line).
+find_signature(Tokens) ->
+    find_signature(Tokens, [0]).
 
 -spec find_signature(
     Tokens :: [tuple()],
-    ParameterStack :: [parameter_number()],
-    Text :: binary(),
-    Line :: non_neg_integer()
+    ParameterStack :: [parameter_number()]
 ) ->
     {ok, item(), parameter_number()} | none.
 %% An unmatched open parenthesis is the start of a signature.
-find_signature([{'(', _} | Rest], [ActiveParameter], _Text, _Line) ->
+find_signature([{'(', _} | Rest], [ActiveParameter]) ->
     case Rest of
         %% Check for "[...] module:func("
         [{atom, _, Func}, {':', _}, {atom, _, Module} | _Rest] ->
@@ -77,22 +71,22 @@ find_signature([{'(', _} | Rest], [ActiveParameter], _Text, _Line) ->
     end;
 %% A comma outside of any data structure (list, tuple, map, or binary) is a
 %% separator between arguments, so we increment the active parameter count.
-find_signature([{',', _} | Rest], [ActiveParameter | ParameterStack], Text, Line) ->
-    find_signature(Rest, [ActiveParameter + 1 | ParameterStack], Text, Line);
+find_signature([{',', _} | Rest], [ActiveParameter | ParameterStack]) ->
+    find_signature(Rest, [ActiveParameter + 1 | ParameterStack]);
 %% Calls may contain any sort of expression but not statements, so when we
 %% see a '.', we know we've failed to find a signature.
-find_signature([{dot, _} | _Rest], _ParameterStack, _Text, _Line) ->
+find_signature([{dot, _} | _Rest], _ParameterStack) ->
     none;
 %% When closing a scope, push a new parameter counter onto the stack.
-find_signature([{ScopeClose, _} | Rest], ParameterStack, Text, Line) when
+find_signature([{ScopeClose, _} | Rest], ParameterStack) when
     ScopeClose =:= ')';
     ScopeClose =:= '}';
     ScopeClose =:= ']';
     ScopeClose =:= '>>'
 ->
-    find_signature(Rest, [0 | ParameterStack], Text, Line);
+    find_signature(Rest, [0 | ParameterStack]);
 %% When opening a scope, pop the extra parameter counter if it exists.
-find_signature([{ScopeOpen, _} | Rest], ParameterStack, Text, Line) when
+find_signature([{ScopeOpen, _} | Rest], ParameterStack) when
     ScopeOpen =:= '(';
     ScopeOpen =:= '{';
     ScopeOpen =:= '[';
@@ -103,20 +97,14 @@ find_signature([{ScopeOpen, _} | Rest], ParameterStack, Text, Line) when
             [_] -> [0];
             [_Head | Tail] -> Tail
         end,
-    find_signature(Rest, ParameterStack1, Text, Line);
+    find_signature(Rest, ParameterStack1);
 %% Discard any other tokens
-find_signature([_ | Rest], ParameterStack, Text, Line) ->
-    find_signature(Rest, ParameterStack, Text, Line);
-%% If there are no lines remaining in the file, then we failed to find any
+find_signature([_ | Rest], ParameterStack) ->
+    find_signature(Rest, ParameterStack);
+%% If there are no tokens remaining on the line, then we failed to find any
 %% signatures and are done.
-find_signature([], _ParameterStack, _Text, 0) ->
-    none;
-%% If we have exhausted the set of tokens on this line, scan backwards a line
-%% (up in the document) since expressions may be split across multiple lines.
-find_signature([], ParameterStack, Text, Line) ->
-    LineContents = els_text:line(Text, Line),
-    Tokens = lists:reverse(els_text:tokens(LineContents)),
-    find_signature(Tokens, ParameterStack, Text, Line - 1).
+find_signature([], _ParameterStack) ->
+    none.
 
 -spec signatures(els_dt_document:item(), item(), parameter_number()) ->
     signature_help() | null.
