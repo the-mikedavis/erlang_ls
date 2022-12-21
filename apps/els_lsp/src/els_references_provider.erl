@@ -63,7 +63,7 @@ get_references({Uri, Line, Character}, _) ->
         end,
     case Refs of
         [] -> null;
-        Rs -> Rs
+        Rs -> lists:reverse(Rs)
     end.
 
 %%==============================================================================
