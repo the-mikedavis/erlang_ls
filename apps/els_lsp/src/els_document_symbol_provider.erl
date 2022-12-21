@@ -17,7 +17,7 @@ handle_request({document_symbol, Params}) ->
     Symbols = symbols(Uri),
     case Symbols of
         [] -> {response, null};
-        _ -> {response, Symbols}
+        _ -> {response, lists:reverse(Symbols)}
     end.
 
 %%==============================================================================
