@@ -31,7 +31,9 @@ handle_request({definition, Params}) ->
                     FuzzyPOIs = make_fuzzy(POIs),
                     case goto_definition(Uri, FuzzyPOIs) of
                         null ->
-                            els_references_provider:handle_request({references, Params});
+                            %% I don't really care for this behavior.
+                            %% els_references_provider:handle_request({references, Params});
+                            {response, null};
                         GoTo ->
                             {response, GoTo}
                     end;
