@@ -14,25 +14,26 @@ maybe_compile_and_load(Uri) ->
         #{"node" := NodeOrNodes} when Ext == <<".erl">> ->
             Nodes = get_nodes(NodeOrNodes),
             Module = els_uri:module(Uri),
-            [rpc_code_reload(Node, Module) || Node <- Nodes],
+            Path = els_utils:to_list(els_uri:path(Uri)),
+            [rpc_code_reload(Node, Module, Path) || Node <- Nodes],
             ok;
         _ ->
             ok
     end.
 
--spec rpc_code_reload(atom(), module()) -> ok.
-rpc_code_reload(Node, Module) ->
+-spec rpc_code_reload(atom(), module(), string()) -> ok.
+rpc_code_reload(Node, Module, Path) ->
     case rpc:call(Node, code, is_sticky, [Module]) of
         true ->
             ok;
         _ ->
             Options = options(Node, Module),
             ?LOG_INFO(
-                "[code_reload] code_reload ~p on ~p with ~p",
-                [Module, Node, Options]
+                "[code_reload] code_reload ~p (~p) on ~p with ~p",
+                [Module, Path, Node, Options]
             ),
             handle_rpc_result(
-                rpc:call(Node, c, c, [Module, Options]), Module
+                rpc:call(Node, c, c, [Path, Options]), Module
             )
     end.
 
