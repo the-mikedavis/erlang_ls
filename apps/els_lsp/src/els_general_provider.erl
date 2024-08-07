@@ -146,9 +146,7 @@ default_providers() ->
             %% NOTE: because erlang_ls does not send incremental document changes
             %%       via `textDocument/didChange', this kind of formatting does not
             %%       make sense.
-            "document-on-type-formatting",
-            %% Signature help is experimental.
-            "signature-help"
+            "document-on-type-formatting"
         ].
 
 %% @doc Give the list of all providers enabled by the current configuration.
