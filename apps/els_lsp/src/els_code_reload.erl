@@ -78,6 +78,12 @@ handle_rpc_result({ok, Module}, _) ->
             message => els_utils:to_binary(Msg)
         }
     );
+handle_rpc_result({badrpc, nodedown} = Err, Module) ->
+    ?LOG_DEBUG(
+        "[code_reload] code_reload swap crashed for ~s with: ~p",
+        [Module, Err]
+    ),
+    ok;
 handle_rpc_result(Err, Module) ->
     ?LOG_INFO(
         "[code_reload] code_reload using c:c/1 crashed with: ~p",
