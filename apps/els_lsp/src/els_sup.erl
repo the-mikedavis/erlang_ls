@@ -111,7 +111,7 @@ restrict_stdio_access() ->
 noop_group_leader() ->
     receive
         Message ->
-            ?LOG_INFO("noop_group_leader got [message=~p]", [Message]),
+            %% ?LOG_INFO("noop_group_leader got [message=~p]", [Message]),
             case Message of
                 {io_request, From, ReplyAs, getopts} ->
                     %% We need to pass the underlying io opts, otherwise shell_docs does
