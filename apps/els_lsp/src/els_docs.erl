@@ -285,8 +285,13 @@ get_doc(Module) when is_atom(Module) ->
             %% If the module isn't loaded, we try
             %% to find the doc chunks from any .beam files
             %% matching the module name.
-            Beams = find_beams(Module),
-            get_doc(Beams, Module)
+            %% Beams = find_beams(Module),
+            %% get_doc(Beams, Module)
+
+            %% BEHAVIOR CHANGE FROM @the-mikedavis! Here we no-op. Finding
+            %% the beam files is incredibly slow and never worked for me
+            %% anyways.
+            {error, not_available}
     catch
         C:E:ST ->
             %% code:get_doc/1 fails for escriptized modules, so fall back
@@ -300,30 +305,35 @@ get_doc(Module) when is_atom(Module) ->
             {error, not_available}
     end.
 
--spec get_doc([file:filename()], module()) ->
-    {ok, docs_v1()} | {error, not_available}.
-get_doc([], _Module) ->
-    {error, not_available};
-get_doc([Beam | T], Module) ->
-    case beam_lib:chunks(Beam, ["Docs"]) of
-        {ok, {Module, [{"Docs", Bin}]}} ->
-            {ok, binary_to_term(Bin)};
-        _ ->
-            get_doc(T, Module)
-    end.
+%% -spec get_doc([file:filename()], module()) ->
+%%     {ok, docs_v1()} | {error, not_available}.
+%% get_doc([], _Module) ->
+%%     {error, not_available};
+%% get_doc([Beam | T], Module) ->
+%%     case beam_lib:chunks(Beam, ["Docs"]) of
+%%         {ok, {Module, [{"Docs", Bin}]}} ->
+%%             {ok, binary_to_term(Bin)};
+%%         _ ->
+%%             get_doc(T, Module)
+%%     end.
 
--spec find_beams(module()) -> [file:filename()].
-find_beams(Module) ->
-    %% Look for matching .beam files under the project root
-    RootUri = els_config:get(root_uri),
-    Root = binary_to_list(els_uri:path(RootUri)),
-    Beams0 = filelib:wildcard(
-        filename:join([Root, "**", atom_to_list(Module) ++ ".beam"])
-    ),
-    %% Sort the beams, to ensure we try the newest beam first
-    TimeBeams = [{filelib:last_modified(Beam), Beam} || Beam <- Beams0],
-    {_, Beams} = lists:unzip(lists:reverse(lists:sort(TimeBeams))),
-    Beams.
+%% -spec find_beams(module()) -> [file:filename()].
+%% find_beams(Module) ->
+%%     %% Look for matching .beam files under the project root
+%%     RootUri = els_config:get(root_uri),
+%%     Root = binary_to_list(els_uri:path(RootUri)),
+%%     %% This wildcard can take more than 5s for RabbitMQ when the bazel
+%%     %% directories are there. This is searching for
+%%     %% `/home/michael/src/rabbitmq/server/**/khepri_cluster.beam` for example.
+%%     %% Even when that stuff is cleared it's still around 1s and isn't cached.
+%%     %% Shouldn't this be limited to a build directory or something?
+%%     Beams0 = filelib:wildcard(
+%%         filename:join([Root, "**", atom_to_list(Module) ++ ".beam"])
+%%     ),
+%%     %% Sort the beams, to ensure we try the newest beam first
+%%     TimeBeams = [{filelib:last_modified(Beam), Beam} || Beam <- Beams0],
+%%     {_, Beams} = lists:unzip(lists:reverse(lists:sort(TimeBeams))),
+%%     Beams.
 
 -spec render_doc(function | type, module(), atom(), arity(), docs_v1()) ->
     {ok, string()} | {error, not_available}.
