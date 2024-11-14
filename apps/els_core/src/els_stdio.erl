@@ -31,7 +31,7 @@ init({Cb, IoDevice}) ->
 
 -spec send(atom() | pid(), binary()) -> ok.
 send(IoDevice, Payload) ->
-    io:format(IoDevice, "~s", [Payload]).
+    io:format(IoDevice, "~ts", [Payload]).
 
 %%==============================================================================
 %% Listener loop function
